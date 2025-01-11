@@ -1,0 +1,33 @@
+body {
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  font-family: Arial, Helvetica, sans-serif;
+  box-sizing: border-box;
+}
+
+button {
+  all: unset;
+  cursor: pointer;
+}
+
+button[disabled] {
+  cursor: default !important;
+}
+
+/* Klasy flex dla ułątwienia roboty */
+.fx-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.fx-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.fx-space-between {
+  justify-content: space-between;
+}

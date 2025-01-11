@@ -1,0 +1,27 @@
+@if (notifications.length > 0) {
+<div class="notification-container">
+  @for (notification of notifications; track notification.id) {
+  <div
+    class="notification"
+    [ngClass]="{
+      success: notification.type === 'success',
+      error: notification.type === 'error',
+      info: notification.type === 'info',
+      warning: notification.type === 'warning'
+    }"
+  >
+    <div class="fx-row fx-space-between">
+      <div class="label">
+        {{ notification.type | uppercase }}
+      </div>
+      <button class="close-btn" (click)="removeNotification(notification.id)">
+        &#10005;
+      </button>
+    </div>
+    <div>
+      <p>{{ notification.message }}</p>
+    </div>
+  </div>
+  }
+</div>
+}

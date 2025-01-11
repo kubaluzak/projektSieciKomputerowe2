@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build C++",
+      "type": "shell",
+      "command": "g++",
+      "args": [
+        "-o",
+        "main",
+        "main.cpp",
+        "./utils/*.cpp",
+        "./utils/models/*.cpp",
+        "-I./utils",
+        "-I./utils/models",
+        "-lssl",
+        "-lcrypto"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Compiles the C++ program"
+    }
+  ]
+}

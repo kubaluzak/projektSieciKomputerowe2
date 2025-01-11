@@ -1,0 +1,22 @@
+<!-- src/app/features/register/register.component.html -->
+<div class="main-container">
+  <!-- Animowane bąbelki -->
+  <div class="bubble"></div>
+  <div class="bubble"></div>
+  <div class="bubble"></div>
+  <div class="bubble"></div>
+  <div class="bubble"></div>
+
+  <!-- Formularz rejestracyjny -->
+  <div class="register-container">
+    <h1>Wpisz swój nick</h1>
+    <input
+      type="text"
+      id="nicknameInput"
+      placeholder="Wpisz swój nick"
+      [(ngModel)]="nickname"
+    />
+    <button id="registerButton" (click)="sendNickname()">Rozpocznij</button>
+    <div id="errorMessage">{{ errorMessage }}</div>
+  </div>
+</div>

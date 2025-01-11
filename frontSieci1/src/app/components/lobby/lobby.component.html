@@ -1,0 +1,81 @@
+<div class="main-container">
+  <div class="game-container">
+    <!-- Sekcja z listą graczy -->
+    <div class="players-container">
+      <p *ngIf="!isGameStarted">
+        @if (lobbyData.players.length < lobbyData.settings.playersMin) { Minimalna liczba graczy:
+        {{ lobbyData.settings.playersMin }}
+        } @else { Oczekiwanie na gotowość graczy }
+      </p>
+      <p *ngIf="isGameStarted">Runda: {{ lobbyData.game.roundNumber }}</p>
+      <p>Liczba graczy: {{ lobbyData.players.length }}</p>
+      <ul>
+        <li *ngFor="let player of lobbyData.players">
+          {{ player.nickname }}
+          <span
+            *ngIf="!isGameStarted"
+            class="ready-status"
+            [ngClass]="player.isReady ? 'ready-status' : 'not-ready-status'"
+            >Ready</span
+          >
+          <span *ngIf="isGameStarted">- Score: {{ player.gameScore }}</span>
+        </li>
+      </ul>
+
+      <button (click)="setReady()" [disabled]="isReady" *ngIf="!isGameStarted">Gotowy</button>
+      @if (!isReady && timeToGetReady) {
+      <div class="ready-timer">
+        <app-timer [countdownFrom]="timeToGetReady"></app-timer>
+      </div>
+      }
+    </div>
+
+    <!-- Sekcja z planszą do rysowania -->
+    <div class="canvas-container">
+      <div class="canvas-panel">
+        <div class="color-picker-container">
+          <div class="color-picker">
+            <input type="color" [(ngModel)]="currentColor" />
+          </div>
+          <div>{{ currentColor }}</div>
+        </div>
+      </div>
+      <div class="canvas-header">
+        <h2 *ngIf="!isGameStarted">Oczekiwanie na wszystkich graczy...</h2>
+        @if (isGameStarted && !isDrawer) {
+        <span *ngFor="let _ of [].constructor(lobbyData.game?.lettersToGuess); let i = index">{{ "_ " }}</span>
+        } @else if (isGameStarted && isDrawer) {
+        <div>Hasło do narysowania: {{ lobbyData.game?.wordToDraw }}</div>
+        }
+      </div>
+      <canvas
+        #drawingCanvas
+        [class.disabled]="!isDrawer"
+        (mousedown)="startDrawing()"
+        (mousemove)="draw($event)"
+        (mouseup)="stopDrawing()"
+        (mouseleave)="stopDrawing()"
+      ></canvas>
+    </div>
+  </div>
+
+  <!-- Sekcja z czatem -->
+  <div class="chat-container">
+    <div class="chat-messages">
+      @for (message of chatMessages; track $index) {
+      <div class="msg" [style.--msg-color]="message.color">
+        <strong>{{ message.sender }}:</strong> {{ message.content }}
+      </div>
+      }
+    </div>
+    <div class="chat-input">
+      <input
+        type="text"
+        [(ngModel)]="newMessage"
+        placeholder="Napisz swoją odpowiedź..."
+        (keydown.enter)="sendMessageOnChat()"
+      />
+      <button (click)="sendMessageOnChat()">Wyślij</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,170 @@
+/* src/app/features/register/register.component.scss */
+
+/* Usunięcie domyślnych marginesów przeglądarki */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ustawienie tła na pełną szerokość i wysokość */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Główne tło z animowanym gradientem */
+.main-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  background: linear-gradient(120deg, #89f7fe, #66a6ff);
+  animation: gradientAnimation 12s ease infinite;
+  position: relative;
+}
+
+/* Animacja gradientu bez różowego koloru */
+@keyframes gradientAnimation {
+  0% {
+    background: linear-gradient(120deg, #89f7fe, #66a6ff);
+  }
+  50% {
+    background: linear-gradient(120deg, #66a6ff, #33d1ff);
+  }
+  100% {
+    background: linear-gradient(120deg, #89f7fe, #66a6ff);
+  }
+}
+
+/* Styl animowanych bąbelków */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  animation: bubbleAnimation 20s linear infinite;
+  opacity: 0.6;
+}
+
+.bubble:nth-child(1) {
+  width: 120px;
+  height: 120px;
+  left: 10%;
+  animation-duration: 15s;
+}
+
+.bubble:nth-child(2) {
+  width: 180px;
+  height: 180px;
+  left: 25%;
+  animation-duration: 20s;
+}
+
+.bubble:nth-child(3) {
+  width: 90px;
+  height: 90px;
+  left: 60%;
+  animation-duration: 12s;
+}
+
+.bubble:nth-child(4) {
+  width: 150px;
+  height: 150px;
+  left: 80%;
+  animation-duration: 25s;
+}
+
+.bubble:nth-child(5) {
+  width: 200px;
+  height: 200px;
+  left: 50%;
+  animation-duration: 30s;
+}
+
+/* Animacja bąbelków */
+@keyframes bubbleAnimation {
+  0% {
+    bottom: -10%;
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(40px);
+  }
+  100% {
+    bottom: 110%;
+    transform: translateX(-40px);
+  }
+}
+
+/* Styl formularza rejestracyjnego */
+.register-container {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  max-width: 450px;
+  width: 90%;
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+/* Animacja wchodzenia formularza */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1 {
+  color: #007acc;
+  margin-bottom: 25px;
+}
+
+#nicknameInput {
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 25px;
+  border: 2px solid #007acc;
+  border-radius: 15px;
+  outline: none;
+  font-size: 1.2em;
+}
+
+#registerButton {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.3em;
+  color: #fff;
+  background-color: #007acc;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#registerButton:hover {
+  background-color: #005fa3;
+  transform: translateY(-2px);
+}
+
+#errorMessage {
+  color: #ff4444;
+  margin-top: 15px;
+  font-size: 1em;
+}
+
+.main-container {
+  overflow: hidden;
+}
+
+.register-container {
+  z-index: 1;
+}
