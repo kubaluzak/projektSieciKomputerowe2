@@ -61,6 +61,7 @@
 .ready-status {
   color: green;
   font-weight: bold;
+  margin-left: 10px;
 }
 
 .not-ready-status {
@@ -209,4 +210,48 @@ canvas.disabled {
 
 .player.success {
   background-color: #94f298;
+}
+
+.player.user {
+  background-color: #a1c4fd;
+}
+
+li.drawer {
+  position: relative;
+}
+
+.player-nick.me {
+  font-weight: 700 !important;
+}
+
+h2 {
+  font-size: 28px;
+}
+
+li.player {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.drawer-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  color: rgb(19, 101, 4);
+  font-weight: 500;
+  left: 10px;
+  top: 0;
+  bottom: 0;
 }

@@ -36,7 +36,7 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
   chatMessages: { sender: string; content: string; color?: string }[] = []; // Tablica wiadomości
   newMessage: string = ''; // Aktualna wiadomość użytkownika
 
-  private user!: User; // Aktualny użytkownik
+  public user!: User; // Aktualny użytkownik
   public get lobbyData(): LobbyData {
     return this.gameDataService.lobbyData!;
   } // Dane dotyczące lobby
@@ -196,6 +196,7 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         break;
       case WsServerMessageType.RoundStart:
         // reset
+        this.clearCanvas();
         if (this.gameDataService.lobbyData) {
           this.gameDataService.lobbyData.game = {
             drawer: data['drawer'],
@@ -266,7 +267,7 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         this.lobbyData.game = undefined;
         this.isReady = false;
         this.clearCanvas();
-        this.notificationService.addNotification('info', 'Gra zakończona wracasz do lobby');
+        this.notificationService.addNotification('info', 'Gra zakończona');
         this.lobbyData.players = data['players'];
 
         break;

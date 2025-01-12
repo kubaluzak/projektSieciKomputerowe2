@@ -10,15 +10,26 @@
       <p *ngIf="isGameStarted">Runda: {{ lobbyData.game?.roundNumber }}</p>
       <p>Liczba graczy: {{ lobbyData.players.length }}</p>
       <ul>
-        <li *ngFor="let player of lobbyData.players">
-          {{ player.nickname }}
+        <li
+          *ngFor="let player of lobbyData.players"
+          class="player"
+          [class.success]="player.roundScore > 0 && isGameStarted"
+          [class.drawer]="player.nickname == this.lobbyData.game?.drawer && isGameStarted"
+          [class.user]="player.nickname == this.gameDataService.getUser()?.nickname"
+        >
+          <div class="drawer-label" *ngIf="player.nickname == this.lobbyData.game?.drawer && isGameStarted">D</div>
+          <span class="player-nick" [style.max-width]="'90%'" [class.me]="player.nickname == this.gameDataService.getUser()?.nickname">{{
+            player.nickname
+          }}</span>
           <span
             *ngIf="!isGameStarted"
             class="ready-status"
             [ngClass]="player.isReady ? 'ready-status' : 'not-ready-status'"
             >Ready</span
           >
-          <span class="player" [class.success]="player.roundScore > 0" *ngIf="isGameStarted">- Round Score: {{ player.roundScore }}</span>
+          <span class="player" [class.success]="player.roundScore > 0" *ngIf="isGameStarted"
+            >- Round Score: {{ player.roundScore }}</span
+          >
         </li>
       </ul>
 
