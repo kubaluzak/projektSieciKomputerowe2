@@ -18,9 +18,12 @@
           [class.user]="player.nickname == this.gameDataService.getUser()?.nickname"
         >
           <div class="drawer-label" *ngIf="player.nickname == this.lobbyData.game?.drawer && isGameStarted">D</div>
-          <span class="player-nick" [style.max-width]="'90%'" [class.me]="player.nickname == this.gameDataService.getUser()?.nickname">{{
-            player.nickname
-          }}</span>
+          <span
+            class="player-nick"
+            [style.max-width]="'90%'"
+            [class.me]="player.nickname == this.gameDataService.getUser()?.nickname"
+            >{{ player.nickname }}</span
+          >
           <span
             *ngIf="!isGameStarted"
             class="ready-status"
@@ -59,6 +62,23 @@
         <div>Hasło do narysowania: {{ lobbyData.game?.wordToDraw }}</div>
         }
       </div>
+      @if (this.lobbyData.isGameEnded) {
+      <div class="scoreboard">
+        <h2>Wyniki końcowe</h2>
+        <div class="table">
+          <div class="header-row">
+            <div class="cell">Miejsce</div>
+            <div class="cell">Gracz</div>
+            <div class="cell">Punkty</div>
+          </div>
+          <div class="row" *ngFor="let player of sortedPlayers(); let i = index">
+            <div class="cell">{{ i + 1 }}.</div>
+            <div class="cell">{{ player.nickname }}</div>
+            <div class="cell">{{ player.gameScore }}</div>
+          </div>
+        </div>
+      </div>
+      } @else {
       <canvas
         #drawingCanvas
         [class.disabled]="!isDrawer"
@@ -66,8 +86,8 @@
         (mousemove)="draw($event)"
         (mouseup)="stopDrawing()"
         (mouseleave)="stopDrawing()"
-      ></canvas>
-      @if (isGameStarted && roundTime) {
+      ></canvas
+      >} @if (isGameStarted && roundTime) {
       <div>
         {{ "Pozostały czas do zakończenia rundy: " }}
         @if (roundTime > 0) {

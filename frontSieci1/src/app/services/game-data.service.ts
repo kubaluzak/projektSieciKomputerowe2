@@ -14,6 +14,7 @@ export interface Player {
 export interface LobbyData {
   lobbyId: number;
   players: Player[];
+  isGameEnded: boolean;
   isGameStarted: boolean;
   settings: { playersMin: number; playersMax: number };
   game?: {

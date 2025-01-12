@@ -30,6 +30,9 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
   get isDrawer(): boolean {
     return this.lobbyData.game?.drawer === this.user.nickname;
   }
+  sortedPlayers() {
+    return [...this.lobbyData.players].sort((a, b) => b.gameScore - a.gameScore);
+  }
   private currentPath: { x: number; y: number }[] = [];
   isReady: boolean = false;
 
@@ -190,12 +193,14 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         }
         break;
       case WsClientMessageType.GameStart:
+        this.lobbyData.isGameEnded = false;
         if (this.gameDataService?.lobbyData) {
           this.gameDataService.lobbyData.isGameStarted = true; // Ustawianie ręczne
         }
         break;
       case WsServerMessageType.RoundStart:
         // reset
+        this.lobbyData.isGameEnded = false;
         this.clearCanvas();
         if (this.gameDataService.lobbyData) {
           this.gameDataService.lobbyData.game = {
@@ -263,6 +268,7 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         this.router.navigate(['/']);
         break;
       case WsServerMessageType.GameEnd:
+        this.lobbyData.isGameEnded = true;
         this.lobbyData.isGameStarted = false;
         this.lobbyData.game = undefined;
         this.isReady = false;
