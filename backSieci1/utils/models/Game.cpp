@@ -125,7 +125,10 @@ nlohmann::json Game::toJson() const
     j["previous_drawers"] = nlohmann::json::array();
     for (const auto &drawer : previous_drawers)
     {
-        j["previous_drawers"].push_back(drawer->toJson()); // Wymaga, aby Player miał toJson
+        if (drawer)
+        {
+            j["previous_drawers"].push_back(drawer->toJson());
+        }
     }
     // j["drawing_board"] = drawing_board.toJSON(); // Dużo danych
     j["max_rounds"] = max_rounds;

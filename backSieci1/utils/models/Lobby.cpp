@@ -72,7 +72,10 @@ nlohmann::json Lobby::toJsonPlayers() const
     nlohmann::json jPlayers = nlohmann::json::array();
     for (const auto &playerPtr : this->players)
     {
-        jPlayers.push_back(playerPtr->toJson());
+        if (playerPtr)
+        {
+            jPlayers.push_back(playerPtr->toJson());
+        }
     }
     return jPlayers;
 }
@@ -84,7 +87,10 @@ nlohmann::json Lobby::toJson() const
     j["players"] = nlohmann::json::array();
     for (const auto &player : players)
     {
-        j["players"].push_back(player->toJson()); // Wymaga, aby Player miał toJson
+        if (player)
+        {
+            j["players"].push_back(player->toJson());
+        }
     }
     j["game"] = game.toJson();
     j["is_in_game"] = is_in_game;
