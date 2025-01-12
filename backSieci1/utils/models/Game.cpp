@@ -51,19 +51,16 @@ Player *Game::setRandomDrawer()
         }
     }
 
+
     if (availablePlayers.empty())
     {
         return nullptr; // Brak graczy mogących zostać rysującymi
     }
 
-    Player *new_drawer = availablePlayers[rand() % availablePlayers.size()];
-
-    if (this->current_drawer)
-    {
-        this->previous_drawers.insert(this->current_drawer);
-    }
+    auto new_drawer = availablePlayers[rand() % availablePlayers.size()];
 
     this->current_drawer = new_drawer;
+    this->previous_drawers.insert(new_drawer);
     return this->current_drawer;
 }
 
@@ -149,12 +146,6 @@ void Game::startNewRound()
     setRandomDrawer();
     word_to_draw = choose_random_word(words_database);
 
-    json drawer_message = {
-        {"type", WsServerMessageType::DrawerNotification},
-        {"word_to_draw", word_to_draw}};
-
-    send_webscoket_message_inframe(current_drawer->client_fd, drawer_message.dump());
-
     json round_start_message = {
         {"type", WsServerMessageType::RoundStart},
         {"roundNumber", current_round},
@@ -166,6 +157,12 @@ void Game::startNewRound()
     {
         send_webscoket_message_inframe(player->client_fd, round_start_message.dump());
     }
+
+    json drawer_message = {
+        {"type", WsServerMessageType::DrawerNotification},
+        {"word_to_draw", word_to_draw}};
+
+    send_webscoket_message_inframe(current_drawer->client_fd, drawer_message.dump());
 
     lobby->game.startDrawingTimer(Game::round_time, [&]()
                                   { this->endRound(); });

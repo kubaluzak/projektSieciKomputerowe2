@@ -1,4 +1,4 @@
-
+Indeksy: 155859, 155870
 
 Odpalenie serwera C [klasycznie]:
 g++ -o main main.cpp ./utils/*.cpp ./utils/models/*.cpp -I./utils -I./utils/models -lssl -lcrypto

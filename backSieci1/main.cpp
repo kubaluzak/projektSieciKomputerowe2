@@ -254,14 +254,8 @@ void handle_chat_message_sent(int client_fd, const json &message)
             }
             else if (lobby->game.current_drawer != sender)
             {
-                json chatMessage = {
-                    {"type", WsServerMessageType::ChatMessage},
-                    {"msg_mode", 1}, // Wiadomość serwera
-                    {"color_mode", 2},
-                    {"content", "Brawo zgadłeś!"}};
-                send_webscoket_message_inframe(client_fd, chatMessage.dump());
-                sender->game_score += 1;
-                lobby->game.current_drawer->game_score += 1;
+                sender->round_score += 1;
+                lobby->game.current_drawer->round_score += 1;
 
                 json scoreUpdate = {
                     {"type", WsServerMessageType::ScoreUpdate},
@@ -270,6 +264,12 @@ void handle_chat_message_sent(int client_fd, const json &message)
                 for (const auto &player : lobby->players)
                 {
                     send_webscoket_message_inframe(player->client_fd, scoreUpdate.dump());
+                    json chatMessage = {
+                        {"type", WsServerMessageType::ChatMessage},
+                        {"msg_mode", 1}, // Wiadomość serwera
+                        {"color_mode", 2},
+                        {"content", "Gracz: " + sender->nickname + " odgadł hasło (+1 pkt)"}};
+                    send_webscoket_message_inframe(player->client_fd, chatMessage.dump());
                 }
             }
         }
@@ -277,6 +277,176 @@ void handle_chat_message_sent(int client_fd, const json &message)
         {
             std::cerr << "Nie znaleziono lobby dla gracza: " << sender->nickname << std::endl;
         }
+    }
+}
+
+void handle_game_start(Lobby &lobby)
+{
+    const int lobby_id = lobby.lobby_id;
+    std::cout << lobby.toJson() << std::endl;
+
+    if (lobby.game.startNewGame())
+    {
+        // Powiadomienie graczy o rozpoczęciu gry i wybraniu rysującego
+        json game_start_message = {
+            {"type", WsServerMessageType::GameStart},
+            {"lobbyId", lobby_id}};
+
+        for (const auto &player : lobby.players)
+        {
+            if (player != nullptr)
+            {
+                send_webscoket_message_inframe(player->client_fd, game_start_message.dump());
+            }
+        }
+    }
+}
+
+void kickInactivePlayer(Player *player, int lobbyId)
+{
+    auto &lobby = lobbies.at(lobbyId);
+
+    json kickMessage = {
+        {"type", WsServerMessageType::Kick},
+    };
+
+    if (lobby->removePlayer(player))
+    {
+        send_lobby_players_update(lobbyId);
+        client_to_player.erase(player->client_fd);
+        send_webscoket_message_inframe(player->client_fd, kickMessage.dump());
+
+        json chatMessage = {
+            {"type", WsServerMessageType::ChatMessage},
+            {"msg_mode", 1}, // Wiadomość serwera
+            {"color_mode", 1},
+            {"content", "Wyrzucono gracza '" + player->nickname + "' z powodu nieaktywności."}};
+
+        // Wysłanie wiadomości do pozostałych graczy w lobby
+        for (auto *remainingPlayer : lobby->players)
+        {
+            send_webscoket_message_inframe(remainingPlayer->client_fd, chatMessage.dump());
+        }
+        delete player;
+
+        if (lobby->checkIfCanStartGame())
+        {
+            handle_game_start(*lobby);
+        }
+    }
+}
+
+void handle_set_ready(int client_fd, const json &message)
+{
+    int lobby_id = message.at("lobbyId");
+
+    auto it = client_to_player.find(client_fd);
+    if (it != client_to_player.end())
+    {
+        Player *player = it->second;
+        auto lobby_it = lobbies.find(lobby_id);
+        if (lobby_it != lobbies.end())
+        {
+            auto &lobby = lobby_it->second;
+            if (!lobby->checkIfHasPlayer(player))
+            {
+                std::cerr << "Podane lobby nie posiada gracza " << player->nickname << std::endl;
+                return;
+            }
+            player->is_ready = true;
+
+            std::cout << "CHECK START" << std::endl;
+            std::cout << lobby->checkIfCanStartGame() << std::endl;
+
+            if (lobby->checkIfCanStartGame())
+            {
+                handle_game_start(*lobby);
+            }
+
+            send_lobby_players_update(lobby_id);
+        }
+    }
+}
+
+void handle_game_end(Lobby &lobby)
+{
+    lobby.is_in_game = false;
+    lobby.game.current_round = 1;
+    lobby.game.previous_drawers.clear();
+    lobby.game.drawing_board.pixels.clear();
+
+    for (const auto &player : lobby.players)
+    {
+        player->is_ready = false;
+        player->round_score = 0;
+    }
+
+    nlohmann::json endGameMessage = {
+        {"type", WsServerMessageType::GameEnd},
+        {"message", "Game over! Returning to lobby."},
+        {"players", lobby.toJsonPlayers()},
+        {"lobbyId", lobby.lobby_id}};
+
+    int lobbyId = lobby.lobby_id;
+    for (const auto &player : lobby.players)
+    {
+        send_webscoket_message_inframe(player->client_fd, endGameMessage.dump());
+
+        player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId]()
+                                { kickInactivePlayer(player, lobbyId); });
+    }
+};
+
+void handle_drawing(int client_fd, const json &message)
+{
+    try
+    {
+        // Pobranie danych o rysowaniu
+        int lobby_id = message.at("lobbyId");
+        int x = message.at("x").get<int>();
+        int y = message.at("y").get<int>();
+
+        std::string color = message.at("color").get<std::string>();
+
+        auto lobby_it = lobbies.find(lobby_id);
+        if (lobby_it != lobbies.end())
+        {
+            auto &lobby = lobby_it->second;
+
+            Player *current_player = lobby->getPlayerByClientFd(client_fd);
+            if (current_player && current_player == lobby->game.current_drawer)
+            {
+                // Aktualizacja planszy
+                lobby->game.drawing_board.setPixel(x, y, color);
+
+                // Powiadomienie innych graczy o zmianach na planszy
+                json drawing_update = {
+                    {"type", WsServerMessageType::DrawingUpdate},
+                    {"x", x},
+                    {"y", y},
+                    {"color", color}};
+
+                for (const auto &player : lobby->players)
+                {
+                    if (player != current_player)
+                    {
+                        send_webscoket_message_inframe(player->client_fd, drawing_update.dump());
+                    }
+                }
+            }
+            else
+            {
+                std::cerr << "Gracz o nicku " << current_player->nickname << " nie jest rysującym" << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "Nie znaleziono lobby o ID " << lobby_id << std::endl;
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Błąd przy obsłudze rysowania: " << e.what() << std::endl;
     }
 }
 
@@ -340,27 +510,7 @@ bool handle_registration(int client_fd, const json &message)
                 if (!player->is_ready && !player->is_timer_running)
                 {
                     player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId]()
-                                            {
-                                            // to sie wykona jak timer sie skonczy a nie powinien sie skonczyc, bo sie przerwie kiedy da ziomal ready
-                                            json kickMessage = {
-                                                {"type", WsServerMessageType::Kick},
-                                            };
-                                            auto &lobby = lobbies.at(lobbyId);
-                                            if (lobby->removePlayer(player))
-                                            {
-                                                send_lobby_players_update(lobbyId);
-                                                client_to_player.erase(player->client_fd);
-                                                delete player;
-                                                send_webscoket_message_inframe(player->client_fd, kickMessage.dump());
-                                                // json chatMessage = {
-                                                //     {"type", WsServerMessageType::ChatMessage},
-                                                //     {"msg_mode", 1}, // Wiadomość serwera
-                                                //     {"color_mode", 1},
-                                                //     {"content", "Wyrzucono gracza '" + player->nickname + "' z powodu nieaktywności."}};
-                                                // for (auto *player : lobby->players){
-                                                //     send_webscoket_message_inframe(player->client_fd, chatMessage.dump());  
-                                                // }
-                                            } });
+                                            { kickInactivePlayer(player, lobbyId); });
                 }
             }
         }
@@ -384,162 +534,6 @@ bool handle_registration(int client_fd, const json &message)
     }
 
     return false; // Jeśli typ nie jest 'register', zwróć false
-}
-
-void handle_game_end(Lobby &lobby)
-{
-    lobby.is_in_game = false;
-    lobby.game.current_round = 1;
-    lobby.game.previous_drawers.clear();
-    lobby.game.drawing_board.pixels.clear();
-
-    for (const auto &player : lobby.players)
-    {
-        player->is_ready = false;
-        player->round_score = 0;
-    }
-
-    nlohmann::json endGameMessage = {
-        {"type", WsServerMessageType::GameEnd},
-        {"message", "Game over! Returning to lobby."},
-        {"players", lobby.toJsonPlayers()},
-        {"lobbyId", lobby.lobby_id}};
-
-    int lobbyId = lobby.lobby_id;
-    for (const auto &player : lobby.players)
-    {
-        send_webscoket_message_inframe(player->client_fd, endGameMessage.dump());
-
-        player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId]()
-                                {
-                                            // to sie wykona jak timer sie skonczy a nie powinien sie skonczyc, bo sie przerwie kiedy da ziomal ready
-                                            json kickMessage = {
-                                                {"type", WsServerMessageType::Kick},
-                                            };
-                                            auto &lobby = lobbies.at(lobbyId);
-                                            if (lobby->removePlayer(player))
-                                            {
-                                                send_lobby_players_update(lobbyId);
-                                                client_to_player.erase(player->client_fd);
-                                                delete player;
-                                                send_webscoket_message_inframe(player->client_fd, kickMessage.dump());
-                                                // json chatMessage = {
-                                                //     {"type", WsServerMessageType::ChatMessage},
-                                                //     {"msg_mode", 1}, // Wiadomość serwera
-                                                //     {"color_mode", 1},
-                                                //     {"content", "Wyrzucono gracza '" + player->nickname + "' z powodu nieaktywności."}};
-                                                // for (auto *player : lobby->players){
-                                                //     send_webscoket_message_inframe(player->client_fd, chatMessage.dump());  
-                                                // }
-                                            } });
-    }
-};
-
-void handle_game_start(Lobby &lobby)
-{
-    const int lobby_id = lobby.lobby_id;
-    std::cout << lobby.toJson() << std::endl;
-
-    if (lobby.game.startNewGame())
-    {
-        // Powiadomienie graczy o rozpoczęciu gry i wybraniu rysującego
-        json game_start_message = {
-            {"type", WsServerMessageType::GameStart},
-            {"lobbyId", lobby_id}};
-
-        for (const auto &player : lobby.players)
-        {
-            if (player != nullptr)
-            {
-                send_webscoket_message_inframe(player->client_fd, game_start_message.dump());
-            }
-        }
-    }
-}
-
-void handle_set_ready(int client_fd, const json &message)
-{
-    int lobby_id = message.at("lobbyId");
-
-    auto it = client_to_player.find(client_fd);
-    if (it != client_to_player.end())
-    {
-        Player *player = it->second;
-        auto lobby_it = lobbies.find(lobby_id);
-        if (lobby_it != lobbies.end())
-        {
-            auto &lobby = lobby_it->second;
-            if (!lobby->checkIfHasPlayer(player))
-            {
-                std::cerr << "Podane lobby nie posiada gracza " << player->nickname << std::endl;
-                return;
-            }
-            player->is_ready = true;
-
-            std::cout << "CHECK START" << std::endl;
-            std::cout << lobby->checkIfCanStartGame() << std::endl;
-
-            if (lobby->checkIfCanStartGame())
-            {
-                handle_game_start(*lobby);
-            }
-
-            send_lobby_players_update(lobby_id);
-        }
-    }
-}
-
-void handle_drawing(int client_fd, const json &message)
-{
-    try
-    {
-        // Pobranie danych o rysowaniu
-        int lobby_id = message.at("lobbyId");
-        int x = message.at("x").get<int>();
-        int y = message.at("y").get<int>();
-
-        std::string color = message.at("color").get<std::string>();
-
-        auto lobby_it = lobbies.find(lobby_id);
-        if (lobby_it != lobbies.end())
-        {
-            auto &lobby = lobby_it->second;
-
-            Player *current_player = lobby->getPlayerByClientFd(client_fd);
-            if (current_player && current_player == lobby->game.current_drawer)
-            {
-                // Aktualizacja planszy
-                lobby->game.drawing_board.setPixel(x, y, color);
-
-                // Powiadomienie innych graczy o zmianach na planszy
-                json drawing_update = {
-                    {"type", WsServerMessageType::DrawingUpdate},
-                    {"x", x},
-                    {"y", y},
-                    {"color", color}};
-
-                for (const auto &player : lobby->players)
-                {
-                    if (player != current_player)
-                    {
-                        send_webscoket_message_inframe(player->client_fd, drawing_update.dump());
-                    }
-                }
-            }
-            else
-            {
-                std::cerr << "Gracz o nicku " << current_player->nickname << " nie jest rysującym" << std::endl;
-            }
-        }
-        else
-        {
-            std::cerr << "Nie znaleziono lobby o ID " << lobby_id << std::endl;
-        }
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "Błąd przy obsłudze rysowania: " << e.what() << std::endl;
-    }
 }
 
 void handle_client(int client_fd)
