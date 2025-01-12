@@ -16,7 +16,7 @@ export interface LobbyData {
   players: Player[];
   isGameStarted: boolean;
   settings: { playersMin: number; playersMax: number };
-  game: {
+  game?: {
     roundNumber: number;
     drawer: string;
     lettersToGuess?: number; // Puste - dla rysującego

@@ -22,10 +22,14 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
   private canvasWidth = 600;
   private pixelSize = 3;
   public currentColor = '#000000'; // Czarny domyślny
+  // Flaga do resetowania stanu licznika
+  public resetFlag = false;
 
   private ctx!: CanvasRenderingContext2D | null;
   private isDrawing = false;
-  isDrawer = false;
+  get isDrawer(): boolean {
+    return this.lobbyData.game?.drawer === this.user.nickname;
+  }
   private currentPath: { x: number; y: number }[] = [];
   isReady: boolean = false;
 
@@ -33,11 +37,27 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
   newMessage: string = ''; // Aktualna wiadomość użytkownika
 
   private user!: User; // Aktualny użytkownik
-  public lobbyData!: LobbyData; // Dane dotyczące lobby
+  public get lobbyData(): LobbyData {
+    return this.gameDataService.lobbyData!;
+  } // Dane dotyczące lobby
   public timeToGetReady?: number;
-  isGameStarted: boolean = false;
-  wordToDraw = '';
-  public roundTime?: number; // Czas rundy
+  public get isGameStarted(): boolean {
+    return this.lobbyData?.isGameStarted;
+  }
+  public _roundTime?: number; // Czas rundy
+
+  public set roundTime(time: number) {
+    this._roundTime = time;
+    this.restartTimer();
+  }
+
+  public get roundTime(): number | undefined {
+    return this._roundTime;
+  }
+
+  private restartTimer(): void {
+    this.resetFlag = !this.resetFlag; // Przełączamy flagę resetującą by resetowac licznik
+  }
 
   constructor() {
     super();
@@ -52,8 +72,6 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
     }
 
     this.user = user;
-    this.lobbyData = lobbyData;
-    this.isGameStarted = this.lobbyData?.isGameStarted ?? false;
   }
 
   ngAfterViewInit(): void {
@@ -151,8 +169,10 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         }
         break;
       case WsServerMessageType.LobbyUpdate:
-        this.lobbyData.players = data['players'];
-        this.lobbyData.lobbyId = data['lobbyId'];
+        if (this.gameDataService.lobbyData) {
+          this.gameDataService.lobbyData.players = data['players'];
+          this.gameDataService.lobbyData.lobbyId = data['lobbyId'];
+        }
         break;
       case WsServerMessageType.ClearCanvas:
         if (this.ctx) {
@@ -163,20 +183,25 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         }
         break;
       case WsServerMessageType.DrawerNotification:
-        this.isDrawer = true;
-        this.wordToDraw = data['word_to_draw'];
-
+        if (this.lobbyData.game) {
+          this.lobbyData.game.wordToDraw = data['word_to_draw'];
+        } else {
+          this.lobbyData.game = { wordToDraw: data['word_to_draw'], drawer: this.user.nickname, roundNumber: 0 };
+        }
         break;
       case WsClientMessageType.GameStart:
-        this.isGameStarted = true; // Ustawianie ręczne
+        if (this.gameDataService?.lobbyData) {
+          this.gameDataService.lobbyData.isGameStarted = true; // Ustawianie ręczne
+        }
         break;
       case WsServerMessageType.RoundStart:
+        // reset
         if (this.gameDataService.lobbyData) {
           this.gameDataService.lobbyData.game = {
             drawer: data['drawer'],
             roundNumber: data['roundNumber'],
             lettersToGuess: data['lettersToGuess'],
-            wordToDraw: this.wordToDraw,
+            wordToDraw: this.lobbyData.game?.wordToDraw,
           };
         }
         this.roundTime = data['roundTime'];
@@ -237,8 +262,8 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         this.router.navigate(['/']);
         break;
       case WsServerMessageType.GameEnd:
-        this.isGameStarted = false;
-        this.isDrawer = false;
+        this.lobbyData.isGameStarted = false;
+        this.lobbyData.game = undefined;
         this.isReady = false;
         this.clearCanvas();
         this.notificationService.addNotification('info', 'Gra zakończona wracasz do lobby');

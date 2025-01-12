@@ -43,6 +43,9 @@ export class RegisterComponent extends WebSocketBaseComponent {
         // Trick żeby od razu móc dane sparsować do modelu
         console.log((data as object).toString ());
         this.gameDataService.setLobbyData(data as unknown as LobbyData);
+        if (this.gameDataService.lobbyData) {
+          // this.gameDataService.lobbyData.game = {};
+        };
         this.gameDataService.setUser({ nickname: this.nickname });
         this.router.navigate(['/lobby']);
         break;

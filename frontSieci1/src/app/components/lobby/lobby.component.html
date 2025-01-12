@@ -7,7 +7,7 @@
         {{ lobbyData.settings.playersMin }}
         } @else { Oczekiwanie na gotowość graczy }
       </p>
-      <p *ngIf="isGameStarted">Runda: {{ lobbyData.game.roundNumber }}</p>
+      <p *ngIf="isGameStarted">Runda: {{ lobbyData.game?.roundNumber }}</p>
       <p>Liczba graczy: {{ lobbyData.players.length }}</p>
       <ul>
         <li *ngFor="let player of lobbyData.players">
@@ -18,7 +18,7 @@
             [ngClass]="player.isReady ? 'ready-status' : 'not-ready-status'"
             >Ready</span
           >
-          <span *ngIf="isGameStarted">- Score: {{ player.gameScore }}</span>
+          <span class="player" [class.success]="player.roundScore > 0" *ngIf="isGameStarted">- Round Score: {{ player.roundScore }}</span>
         </li>
       </ul>
 
@@ -32,7 +32,7 @@
 
     <!-- Sekcja z planszą do rysowania -->
     <div class="canvas-container">
-      <div class="canvas-panel">
+      <div [ngStyle]="{ visibility: isGameStarted && isDrawer ? 'visible' : 'hidden' }" class="canvas-panel">
         <div class="color-picker-container">
           <div class="color-picker">
             <input type="color" [(ngModel)]="currentColor" />
@@ -56,6 +56,16 @@
         (mouseup)="stopDrawing()"
         (mouseleave)="stopDrawing()"
       ></canvas>
+      @if (isGameStarted && roundTime) {
+      <div>
+        {{ "Pozostały czas do zakończenia rundy: " }}
+        @if (roundTime > 0) {
+        <app-timer [countdownFrom]="roundTime" [reset]="resetFlag"></app-timer>
+        } @else {
+        <div>0</div>
+        }
+      </div>
+      }
     </div>
   </div>
 

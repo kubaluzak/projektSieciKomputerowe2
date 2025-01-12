@@ -206,3 +206,7 @@ canvas.disabled {
   color: var(--msg-color);
   background-color: color-mix(in srgb, var(--msg-color), white 80%);
 }
+
+.player.success {
+  background-color: #94f298;
+}
