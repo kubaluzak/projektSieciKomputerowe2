@@ -21,14 +21,16 @@ struct Game
     int remaining_round_time;
     inline static const int max_rounds = 8; // Maksymalna liczba rund w grze
     Lobby *lobby = nullptr;                 // Wskaźnik na powiązane lobby
+    std::function<void(Player*, int)> kickInactivePlayerCallback;
+    
     void startDrawingTimer(int seconds, std::function<void()> callback);
-    void startNewRound();
-    void endGame();
-    void endRound();
+    void startNewRound(std::function<void(Player *, int)> kickInactivePlayerCallback);
+    void endGame(std::function<void(Player*, int)> kickInactivePlayerCallback);
+    void endRound(std::function<void(Player *, int)> kickInactivePlayerCallback);
 
     Game(Lobby *lobby);
 
-    bool startNewGame();       // Rozpocznij nową grę
+    bool startNewGame(std::function<void(Player *, int)> kickInactivePlayerCallback);       // Rozpocznij nową grę
     Player *setRandomDrawer(); // Wybierz nowego gracza do rysowania
     void reset();              // Zresetuj grę do stanu początkowego
     nlohmann::json toJson() const;

@@ -9,6 +9,7 @@ struct DrawingBoard
 {
     inline static const int width = 600;
     inline static const int height = 400;
+    std::vector<std::tuple<int, int, std::string>> changed_pixels;
 
     // Macierz pikseli reprezentowana jako wektor wektorów napisów (kolory)
     std::vector<std::vector<std::string>> pixels;
@@ -19,7 +20,7 @@ struct DrawingBoard
     void setPixel(int x, int y, const std::string &color); // Ustawia kolor piksela
     nlohmann::json getDrawingActions() const;
 
-    nlohmann::json toJSON() const;                            // Zwraca planszę w formacie JSON
+    nlohmann::json toJSON() const; // Zwraca planszę w formacie JSON
     nlohmann::json getChangedPixels() const;
 };
 

@@ -280,12 +280,14 @@ void handle_chat_message_sent(int client_fd, const json &message)
     }
 }
 
+void kickInactivePlayer(Player *player, int lobbyId);
+
 void handle_game_start(Lobby &lobby)
 {
     const int lobby_id = lobby.lobby_id;
     std::cout << lobby.toJson() << std::endl;
 
-    if (lobby.game.startNewGame())
+    if (lobby.game.startNewGame(kickInactivePlayer))
     {
         // Powiadomienie graczy o rozpoczęciu gry i wybraniu rysującego
         json game_start_message = {
@@ -355,7 +357,6 @@ void handle_set_ready(int client_fd, const json &message)
             }
             player->is_ready = true;
 
-            std::cout << "CHECK START" << std::endl;
             std::cout << lobby->checkIfCanStartGame() << std::endl;
 
             if (lobby->checkIfCanStartGame())
@@ -367,35 +368,6 @@ void handle_set_ready(int client_fd, const json &message)
         }
     }
 }
-
-void handle_game_end(Lobby &lobby)
-{
-    lobby.is_in_game = false;
-    lobby.game.current_round = 1;
-    lobby.game.previous_drawers.clear();
-    lobby.game.drawing_board.pixels.clear();
-
-    for (const auto &player : lobby.players)
-    {
-        player->is_ready = false;
-        player->round_score = 0;
-    }
-
-    nlohmann::json endGameMessage = {
-        {"type", WsServerMessageType::GameEnd},
-        {"message", "Game over! Returning to lobby."},
-        {"players", lobby.toJsonPlayers()},
-        {"lobbyId", lobby.lobby_id}};
-
-    int lobbyId = lobby.lobby_id;
-    for (const auto &player : lobby.players)
-    {
-        send_webscoket_message_inframe(player->client_fd, endGameMessage.dump());
-
-        player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId]()
-                                { kickInactivePlayer(player, lobbyId); });
-    }
-};
 
 void handle_drawing(int client_fd, const json &message)
 {

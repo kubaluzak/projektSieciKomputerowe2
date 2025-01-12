@@ -16,7 +16,7 @@ using json = nlohmann::json;
 
 Game::Game(Lobby *lobby) : lobby(lobby) {}
 
-bool Game::startNewGame()
+bool Game::startNewGame(std::function<void(Player *, int)> kickInactivePlayerCallback)
 {
     if (!this->lobby)
     {
@@ -25,7 +25,7 @@ bool Game::startNewGame()
     }
 
     this->lobby->is_in_game = true;
-    this->startNewRound();
+    this->startNewRound(kickInactivePlayerCallback);
 
     std::cout << "Nowa gra zaczęła się w lobby o id " << this->lobby->lobby_id
               << ". Pierwszy rysujący: " << current_drawer->nickname << std::endl;
@@ -50,7 +50,6 @@ Player *Game::setRandomDrawer()
             availablePlayers.push_back(player);
         }
     }
-
 
     if (availablePlayers.empty())
     {
@@ -134,7 +133,7 @@ nlohmann::json Game::toJson() const
     return j;
 }
 
-void Game::startNewRound()
+void Game::startNewRound(std::function<void(Player *, int)> kickInactivePlayerCallback)
 {
     if (lobby == nullptr)
     {
@@ -164,14 +163,25 @@ void Game::startNewRound()
 
     send_webscoket_message_inframe(current_drawer->client_fd, drawer_message.dump());
 
-    lobby->game.startDrawingTimer(Game::round_time, [&]()
-                                  { this->endRound(); });
+    lobby->game.startDrawingTimer(Game::round_time, [&, kickInactivePlayerCallback]()
+                                  { this->endRound(kickInactivePlayerCallback); });
 }
 
-void Game::endRound()
+void Game::endRound(std::function<void(Player *, int)> kickInactivePlayerCallback)
 {
+    std::vector<Player *> availablePlayers;
+
+    for (auto player : this->lobby->players)
+    {
+        // Wybiera gracza spośród tych, którzy nie byli wcześniej rysującymi
+        if (player != this->current_drawer && this->previous_drawers.find(player) == this->previous_drawers.end())
+        {
+            availablePlayers.push_back(player);
+        }
+    }
+
     // Jeśli można to zaczynamy nową rundę
-    if (current_round < Game::max_rounds)
+    if (current_round < Game::max_rounds && !availablePlayers.empty())
     {
         drawing_board.reset();
         current_drawer = nullptr;
@@ -187,15 +197,43 @@ void Game::endRound()
             }
         }
 
-        this->startNewRound();
+        this->startNewRound(kickInactivePlayerCallback);
     }
     // Jeśli nie to kończymy grę
     else
     {
-        this->endGame();
+        std::cout << "BEFORE END" << std::endl;
+        this->endGame(kickInactivePlayerCallback);
+        std::cout << "AFTER END" << std::endl;
+        std::cout << this->lobby->checkIfCanStartGame() << std::endl;
     }
 }
 
-void Game::endGame()
+void Game::endGame(std::function<void(Player *, int)> kickInactivePlayerCallback)
 {
+    this->lobby->is_in_game = false;
+    lobby->game.current_round = 0;
+    lobby->game.previous_drawers.clear();
+    lobby->game.drawing_board.pixels.clear();
+    lobby->game.drawing_board.changed_pixels.clear();
+
+    for (const auto &player : lobby->players)
+    {
+        player->is_ready = false;
+        player->round_score = 0;
+    }
+
+    nlohmann::json endGameMessage = {
+        {"type", WsServerMessageType::GameEnd},
+        {"players", lobby->toJsonPlayers()},
+        {"lobbyId", lobby->lobby_id}};
+
+    int lobbyId = lobby->lobby_id;
+    for (const auto &player : lobby->players)
+    {
+        send_webscoket_message_inframe(player->client_fd, endGameMessage.dump());
+
+        player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId, kickInactivePlayerCallback]()
+                                { kickInactivePlayerCallback(player, lobbyId); });
+    }
 }

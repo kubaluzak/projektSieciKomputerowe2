@@ -4,7 +4,6 @@
 
 DrawingBoard::DrawingBoard()
     : pixels(width, std::vector<std::string>(height, "")) {}
-std::vector<std::tuple<int, int, std::string>> changed_pixels;
 
 void DrawingBoard::reset()
 {
