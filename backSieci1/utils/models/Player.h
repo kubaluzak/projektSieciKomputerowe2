@@ -14,6 +14,7 @@ struct Player
     int game_score = 0;            // Punkty zdobyte w grze - to ustawienie tyczy się gry
     bool is_timer_running = false; // Flaga wskazująca, czy timer działa
     inline static const int ready_timer_seconds = 30;
+    bool guessed = false;
 
     Player(int fd, std::string name, bool ready = false);
 

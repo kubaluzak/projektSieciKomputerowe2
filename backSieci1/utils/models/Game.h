@@ -17,7 +17,8 @@ struct Game
     std::string word_to_draw;
     std::unordered_set<Player *> previous_drawers; // Zbiór graczy, którzy już byli rysującymi
     DrawingBoard drawing_board;                    // Obiekt planszy do rysowania
-    inline static const int round_time = 8;
+    std::string checkSum;
+    inline static const int round_time = 5;
     int remaining_round_time;
     inline static const int max_rounds = 8; // Maksymalna liczba rund w grze
     Lobby *lobby = nullptr;                 // Wskaźnik na powiązane lobby

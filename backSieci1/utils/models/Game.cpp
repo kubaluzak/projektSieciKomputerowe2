@@ -10,6 +10,8 @@
 #include <chrono>
 #include <iostream>
 #include <functional>
+#include <set>
+#include <bits/random.h>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -62,7 +64,20 @@ Player *Game::setRandomDrawer()
     this->previous_drawers.insert(new_drawer);
     return this->current_drawer;
 }
+std::string generate_simple_checksum() {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const size_t charset_size = sizeof(charset) - 1; // Pomijamy znak null-terminatora
+    const size_t checksum_length = 16;
 
+    std::string checksum;
+    checksum.reserve(checksum_length);
+
+    for (size_t i = 0; i < checksum_length; ++i) {
+        checksum += charset[rand() % charset_size];
+    }
+
+    return checksum;
+}
 void Game::reset()
 {
     current_drawer = nullptr;
@@ -196,7 +211,9 @@ void Game::endRound(std::function<void(Player *, int)> kickInactivePlayerCallbac
             for (auto player : lobby->players)
             {
                 player->game_score += player->round_score;
-                player->round_score = 0;
+                player->guessed = false;
+
+                // player->round_score = 0;
             }
         }
 
@@ -212,8 +229,7 @@ void Game::endRound(std::function<void(Player *, int)> kickInactivePlayerCallbac
     }
 }
 
-void Game::endGame(std::function<void(Player *, int)> kickInactivePlayerCallback)
-{
+void Game::endGame(std::function<void(Player *, int)> kickInactivePlayerCallback) {
     this->lobby->is_in_game = false;
     lobby->game.current_round = 0;
     lobby->game.previous_drawers.clear();
@@ -223,20 +239,27 @@ void Game::endGame(std::function<void(Player *, int)> kickInactivePlayerCallback
     for (const auto &player : lobby->players)
     {
         player->is_ready = false;
-        player->round_score = 0;
+        // player->round_score = 0;
     }
+    // checksum = generate_checksum();
+    srand(static_cast<unsigned int>(time(nullptr))); // Inicjalizacja generatora losowego
 
+this->checkSum = generate_simple_checksum();
     nlohmann::json endGameMessage = {
         {"type", WsServerMessageType::GameEnd},
         {"players", lobby->toJsonPlayers()},
-        {"lobbyId", lobby->lobby_id}};
+        {"lobbyId", lobby->lobby_id},
+{"checkSum", this->checkSum}
+};
 
     int lobbyId = lobby->lobby_id;
-    for (const auto &player : lobby->players)
-    {
+    for (const auto &player : lobby->players) {
         send_webscoket_message_inframe(player->client_fd, endGameMessage.dump());
 
-        player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId, kickInactivePlayerCallback]()
-                                { kickInactivePlayerCallback(player, lobbyId); });
+        //        player->startReadyTimer(Player::ready_timer_seconds, [player, lobbyId, kickInactivePlayerCallback]()
+        //                                { kickInactivePlayerCallback(player, lobbyId); });
     }
+
+
+
 }

@@ -6,4 +6,5 @@ export enum WsClientMessageType {
   ClearCanvas = 'clear_canvas',
   GameStart = 'game_start',
   ChatMessage = "chat_message",
+  ENDLOBBY = "end_lobby"
 }

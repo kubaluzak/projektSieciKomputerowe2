@@ -29,9 +29,9 @@
 using json = nlohmann::json;
 
 // mapa z istniejacymi lobby, po usunieciu lobby takze usuwamy je z tej mapy
-std::unordered_map<int, std::unique_ptr<Lobby>> lobbies;
+ std::unordered_map<int, std::unique_ptr<Lobby>> lobbies;
 // do tego setu trafiaja usuniete lobby, zebysmy wiedzieli ze mozna nadac ich id kolejny raz
-std::set<int> free_lobby_ids;
+ std::set<int> free_lobby_ids;
 // Mapa deskryptorów gniazd połączeń klienta z obiektem gracza w programie
 // Wygodne by przechowywać to tu (poza PlayerSetem players w Lobby oczywiście)
 std::unordered_map<int, Player *> client_to_player;
@@ -74,6 +74,34 @@ void send_lobby_players_update(int lobby_id)
         send_webscoket_message_inframe(player->client_fd, notification.dump());
     }
 }
+
+void remove_lobby_and_players(int lobby_id)
+{
+    auto it = lobbies.find(lobby_id);
+    if (it != lobbies.end())
+    {
+        auto &lobby = it->second;
+
+        // Usuń wszystkich graczy z lobby
+        for (const auto &player : lobby->players)
+        {
+            client_to_player.erase(player->client_fd);
+            close(player->client_fd);
+            delete player;
+        }
+
+        // Usuń lobby z globalnej mapy i zwolnij jego ID
+        lobbies.erase(it);
+        free_lobby_ids.insert(lobby_id);
+
+        std::cout << "Lobby " << lobby_id << " and all its players have been removed." << std::endl;
+    }
+    else
+    {
+        std::cerr << "Lobby with ID " << lobby_id << " does not exist." << std::endl;
+    }
+}
+
 // Funkcja drukująca wszystkie lobby i graczy w nich znajdujących się (pomocnicza bo nie wiem jak to zdebugować xd)
 void print_all_lobbies_and_players()
 {
@@ -199,6 +227,7 @@ void handle_disconnect(int client_fd)
     std::cout << "Klient rozłączony i usunięty: fd " << client_fd << std::endl;
 }
 
+
 void handle_round_info_for_new_players(int client_fd, Lobby &lobby)
 {
     const int lobby_id = lobby.lobby_id;
@@ -252,24 +281,28 @@ void handle_chat_message_sent(int client_fd, const json &message)
                     send_webscoket_message_inframe(player->client_fd, chatMessage.dump());
                 }
             }
-            else if (lobby->game.current_drawer != sender)
-            {
-                sender->round_score += 1;
-                lobby->game.current_drawer->round_score += 1;
+            else if (lobby->game.current_drawer != sender) {
+                if (!sender->guessed) {
+                    sender->round_score += 1;
+                    sender->guessed = true;
+                    lobby->game.current_drawer->round_score += 1;
 
-                json scoreUpdate = {
-                    {"type", WsServerMessageType::ScoreUpdate},
-                    {"players", lobby->toJsonPlayers()}};
 
-                for (const auto &player : lobby->players)
-                {
-                    send_webscoket_message_inframe(player->client_fd, scoreUpdate.dump());
-                    json chatMessage = {
-                        {"type", WsServerMessageType::ChatMessage},
-                        {"msg_mode", 1}, // Wiadomość serwera
-                        {"color_mode", 2},
-                        {"content", "Gracz: " + sender->nickname + " odgadł hasło (+1 pkt)"}};
-                    send_webscoket_message_inframe(player->client_fd, chatMessage.dump());
+
+                    json scoreUpdate = {
+                        {"type", WsServerMessageType::ScoreUpdate},
+                        {"players", lobby->toJsonPlayers()}};
+
+                    for (const auto &player : lobby->players)
+                    {
+                        send_webscoket_message_inframe(player->client_fd, scoreUpdate.dump());
+                        json chatMessage = {
+                            {"type", WsServerMessageType::ChatMessage},
+                            {"msg_mode", 1}, // Wiadomość serwera
+                            {"color_mode", 2},
+                            {"content", "Gracz: " + sender->nickname + " odgadł hasło (+1 pkt)"}};
+                        send_webscoket_message_inframe(player->client_fd, chatMessage.dump());
+                    }
                 }
             }
         }
@@ -301,6 +334,14 @@ void handle_game_start(Lobby &lobby)
                 send_webscoket_message_inframe(player->client_fd, game_start_message.dump());
             }
         }
+        // if (lobby.game.current_round >= 5)
+        // {
+        //     std::cerr << "siema  "  << std::endl;
+        //
+        //     remove_lobby_and_players(lobby.lobby_id);
+        // }
+        // std::cerr << "!!!!!!!!!!!!!!!!!!!! \n \n\n\n\n\n\n\n\n\n\\n\n\n\n  "  << std::endl;
+
     }
 }
 
@@ -574,6 +615,31 @@ void handle_client(int client_fd)
                 else if (type == "ACK")
                 {
                     handle_ack(client_fd, j);
+                }
+                else if (type == "end_lobby") {
+                    auto player_it = client_to_player.find(client_fd);
+                    if (player_it == client_to_player.end())
+                    {
+                        std::cerr << "Player with fd " << client_fd << " not found in client_to_player map." << std::endl;
+                        return;
+                    }
+
+                    Player *player = player_it->second;
+                    int lobby_id = -1;
+                    for (const auto &[id, lobby] : lobbies)
+                    {
+                        if (lobby->checkIfHasPlayer(player))
+                        {
+                            lobby_id = id;
+                            break;
+                        }
+                    }
+                    // std::cerr << "Nieznany typ wiadomości: " << j.at('checkSum') << std::endl;
+                    // std::cerr << "Nieznany typ wiadomości: " << lobbies.at(lobby_id)->game.checkSum << std::endl;
+
+                    if(j.at("checkSum") == lobbies.at(lobby_id)->game.checkSum) {
+                        remove_lobby_and_players(lobby_id);
+                    }
                 }
                 else
                 {

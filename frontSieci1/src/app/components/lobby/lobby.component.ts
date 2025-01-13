@@ -21,6 +21,7 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
   private canvasHeight = 400;
   private canvasWidth = 600;
   private pixelSize = 3;
+  private checkSum = 0;
   public currentColor = '#000000'; // Czarny domyślny
   // Flaga do resetowania stanu licznika
   public resetFlag = false;
@@ -29,9 +30,6 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
   private isDrawing = false;
   get isDrawer(): boolean {
     return this.lobbyData.game?.drawer === this.user.nickname;
-  }
-  sortedPlayers() {
-    return [...this.lobbyData.players].sort((a, b) => b.gameScore - a.gameScore);
   }
   private currentPath: { x: number; y: number }[] = [];
   isReady: boolean = false;
@@ -130,7 +128,9 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
       lobbyId: this.lobbyData.lobbyId,
     } as IWsMessage);
   }
-
+  sortedPlayers() {
+    return [...this.lobbyData.players].sort((a, b) => b.gameScore - a.gameScore);
+  }
   clearCanvas(): void {
     const canvas = this.drawingCanvas.nativeElement;
     if (this.ctx) {
@@ -193,14 +193,12 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         }
         break;
       case WsClientMessageType.GameStart:
-        this.lobbyData.isGameEnded = false;
         if (this.gameDataService?.lobbyData) {
           this.gameDataService.lobbyData.isGameStarted = true; // Ustawianie ręczne
         }
         break;
       case WsServerMessageType.RoundStart:
         // reset
-        this.lobbyData.isGameEnded = false;
         this.clearCanvas();
         if (this.gameDataService.lobbyData) {
           this.gameDataService.lobbyData.game = {
@@ -268,13 +266,25 @@ export class LobbyComponent extends WebSocketBaseComponent implements AfterViewI
         this.router.navigate(['/']);
         break;
       case WsServerMessageType.GameEnd:
-        this.lobbyData.isGameEnded = true;
         this.lobbyData.isGameStarted = false;
         this.lobbyData.game = undefined;
+        this.lobbyData.isGameEnded = true;
         this.isReady = false;
         this.clearCanvas();
-        this.notificationService.addNotification('info', 'Gra zakończona');
+        this.notificationService.addNotification('info', 'Gra zakończona \n Za 10 sekund nastapi przekierowanie');
         this.lobbyData.players = data['players'];
+        this.checkSum = data['checkSum'];
+
+        this.sendMessage({
+          type: WsClientMessageType.ENDLOBBY,
+          lobbyID: this.lobbyData.lobbyId,
+          checkSum: this.checkSum
+        } as IWsMessage);
+        setTimeout(() => {
+        this.gameDataService.reset();
+          this.router.navigate(['/']);
+          
+        }, 10000);
 
         break;
 

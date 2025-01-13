@@ -17,7 +17,7 @@ struct Lobby
     bool is_in_game = false;
 
     inline static const int min_players = 2; // Minimalna ilość graczy do rozpoczęcia gry
-    inline static const int max_players = 3; // Maksymalna ilość graczy w lobby
+    inline static const int max_players = 5; // Maksymalna ilość graczy w lobby
 
     Lobby(int id);
 
