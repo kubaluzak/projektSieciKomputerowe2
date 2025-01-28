@@ -1,6 +1,6 @@
 // src/app/websocket.service.ts
 import { Injectable } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { NotificationService } from './notification.service';
 import { IWsMessage } from '../interfaces/ws-message.interface';
@@ -9,15 +9,29 @@ import { IWsMessage } from '../interfaces/ws-message.interface';
   providedIn: 'root',
 })
 export class WebSocketService {
-  private socket: WebSocket;
+  private socket: WebSocket | null = null;
   private messageSubject = new Subject<IWsMessage>();
+  private isConnected = new BehaviorSubject<boolean>(false);
+  public isConnected$ = this.isConnected.asObservable();
+
 
   constructor(private notificationService: NotificationService) {
-    this.socket = new WebSocket(
-      `ws://${environment.websocketHost}:${environment.websocketPort}/ws`
-    );
+ 
+  }
+  initializeConnection(host: string, port: number): void {
+
+    if (this.socket) {
+      console.warn('WebSocket connection already exists.');
+      return;
+    }
+
+
+    this.socket = new WebSocket(`ws://${host}:${port}/ws`);
 
     this.socket.onopen = () => {
+    this.isConnected.next(true);
+
+
       console.log('WebSocket connection established.');
       this.notificationService.addNotification(
         'success',
@@ -45,8 +59,10 @@ export class WebSocketService {
         'info',
         'WebSocket connection closed.'
       );
+      this.socket = null; // Ustaw null po zamknięciu połączenia
     };
   }
+
   private sendAck(message: any): void {
     if (message.messageId) {
       const ack = {
@@ -64,6 +80,7 @@ export class WebSocketService {
     }
   }
   sendMessage(message: IWsMessage) {
+    if(this.socket != null)
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     }
@@ -76,5 +93,9 @@ export class WebSocketService {
     if (this.socket) {
       this.socket.close();
     }
+    this.isConnected.next(false);
   }
+
+
+  
 }

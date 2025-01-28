@@ -7,6 +7,23 @@
   <div class="bubble"></div>
   <div class="bubble"></div>
 
+  <div *ngIf="step === 'configWS'">
+    <h2>Konfiguracja WebSocket</h2>
+    <label>
+      Host:
+      <input type="text" [(ngModel)]="websocketHost" />
+    </label>
+    <br />
+    <label>
+      Port:
+      <input type="number" [(ngModel)]="websocketPort" />
+    </label>
+    <br />
+    <button (click)="proceedToRegistration()">Przejdź do rejestracji</button>
+    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+  </div>
+  <div *ngIf="step === 'register'">
+
   <!-- Formularz rejestracyjny -->
   <div class="register-container">
     <h1>Wpisz swój nick</h1>
@@ -19,4 +36,5 @@
     <button id="registerButton" (click)="sendNickname()">Rozpocznij</button>
     <div id="errorMessage">{{ errorMessage }}</div>
   </div>
+</div>
 </div>
