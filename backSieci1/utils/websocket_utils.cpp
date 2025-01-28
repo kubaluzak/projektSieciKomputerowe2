@@ -198,7 +198,7 @@ void resend_webscoket_message_inframe(int client_fd, int message_id) {
               << " do klienta " << client_fd << ". Próba: " << it->second.retries << std::endl;
 }
 
-void check_ack_timeouts()
+std::pair<std::string, int> check_ack_timeouts()
 {
     auto now = std::chrono::steady_clock::now();
 
@@ -213,6 +213,7 @@ void check_ack_timeouts()
                 {
                     std::cerr << "Nie otrzymano ACK dla wiadomości ID: " << it->first << ". Usuwanie wiadomości." << std::endl;
                     it = context.pending_ack.erase(it);
+                      return std::make_pair("Usuń klienta", client_fd);
                 }
                 else
                 {
@@ -221,6 +222,7 @@ void check_ack_timeouts()
                     it->second.timestamp = now;
                     it->second.retries++;
                     ++it;
+
                 }
             }
             else
@@ -229,6 +231,8 @@ void check_ack_timeouts()
             }
         }
     }
+    return std::make_pair("git git", 123);
+
 }
 
 void handle_ack(int client_fd, const nlohmann::json &message)

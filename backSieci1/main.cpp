@@ -670,6 +670,7 @@ int main()
         return 1;
     }
 
+
     sockaddr_in server_addr{};
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -809,7 +810,10 @@ int main()
                 }
 
                 // Wywołaj funkcję obsługi timeoutów ACK
-                check_ack_timeouts();
+            auto result = check_ack_timeouts();
+                if (result.first == "Usuń klienta") {
+                    handle_disconnect(result.second);
+                }
             }
 
             else

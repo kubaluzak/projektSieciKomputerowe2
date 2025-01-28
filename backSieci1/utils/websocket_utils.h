@@ -21,7 +21,8 @@ bool is_websocket_close_frame(const std::vector<uint8_t> &data);
 std::string decode_websocket_frame(const char *buffer, int size);
 bool is_handshake_request(const char *buffer, size_t bytes_read);
 void handle_ack(int client_fd, const nlohmann::json &message);
-void check_ack_timeouts();
+
+std::pair<std::string, int> check_ack_timeouts();
 void send_changed_pixels(int client_fd, const nlohmann::json &changed_pixels);
 
 // Definicja struktur
